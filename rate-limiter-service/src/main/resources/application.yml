@@ -1,0 +1,39 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: rate-limiter-service
+
+  # Redis configuration (for distributed rate limiting)
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      timeout: 5000
+
+# Rate Limiter configuration
+rate-limiter:
+  storage: memory               # memory | redis (switch to redis for distributed)
+  default-strategy: SLIDING_WINDOW_COUNTER
+  cache-ttl-seconds: 60         # How long to cache rules from Config Service
+
+# Config Service (to fetch rules)
+config-service:
+  base-url: http://localhost:8082
+  timeout-ms: 5000
+
+# Actuator endpoints
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics
+  endpoint:
+    health:
+      show-details: always
+
+# Logging
+logging:
+  level:
+    com.ratelimiter.service: DEBUG

@@ -1,0 +1,72 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: api-gateway
+
+  cloud:
+    gateway:
+      routes:
+        # Route to Business Service
+        - id: business-service
+          uri: http://localhost:8083
+          predicates:
+            - Path=/api/v1/**
+          filters:
+            - StripPrefix=0
+
+        # Route to Rate Limiter Service
+        - id: rate-limiter-service
+          uri: http://localhost:8081
+          predicates:
+            - Path=/api/v1/rl/**
+          filters:
+            - StripPrefix=0
+
+      # Default filters applied to all routes
+      default-filters:
+        - name: CircuitBreaker
+          args:
+            name: rateLimiterCircuitBreaker
+            fallbackUri: forward:/fallback/rate-limiter
+
+# Actuator endpoints
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics
+  endpoint:
+    health:
+      show-details: always
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+
+# Rate Limiter Client Configuration
+rate-limiter:
+  client:
+    base-url: http://localhost:8081
+    timeout-ms: 5000
+  fail-strategy: FAIL_OPEN   # FAIL_OPEN = allow if RL service is down
+  enabled: true
+
+# Resilience4j Circuit Breaker
+resilience4j:
+  circuitbreaker:
+    instances:
+      rateLimiterCircuitBreaker:
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        failureRateThreshold: 50
+        waitDurationInOpenState: 10s
+        permittedNumberOfCallsInHalfOpenState: 3
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+
+# Logging
+logging:
+  level:
+    com.ratelimiter.gateway: DEBUG
+    org.springframework.cloud.gateway: INFO
